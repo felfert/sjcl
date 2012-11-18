@@ -4,3 +4,4 @@ core_yui.js
 core_closure.js
 config.mk
 *.swp
+*.gz
