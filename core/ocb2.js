@@ -13,7 +13,10 @@
  * @author Mike Hamburg
  * @author Dan Boneh
  */
-sjcl.mode.ocb2 = {
+sjcl.mode.ocb2 = new Class({
+
+  Implements: Events,
+
   /** The name of the mode.
    * @constant
    */
@@ -34,7 +37,7 @@ sjcl.mode.ocb2 = {
       throw new sjcl.exception.invalid("ocb iv must be 128 bits");
     }
     var i,
-        times2 = sjcl.mode.ocb2._times2,
+        times2 = this._times2,
         w = sjcl.bitArray,
         xor = w._xor4,
         checksum = [0,0,0,0],
@@ -52,6 +55,10 @@ sjcl.mode.ocb2 = {
       checksum = xor(checksum, bi);
       output = output.concat(xor(delta,prp.encrypt(xor(delta, bi))));
       delta = times2(delta);
+      if (0 == (i & 0x0FFFFF)) {
+          // fire a progress event every MiB
+          this.fireEvent('progress', ['encrypt', i, plaintext.length]);
+      }
     }
     
     /* Chop out the final block */
@@ -66,7 +73,7 @@ sjcl.mode.ocb2 = {
     
     /* MAC the header */
     if (adata.length) {
-      checksum = xor(checksum, premac ? adata : sjcl.mode.ocb2.pmac(prp, adata));
+      checksum = xor(checksum, premac ? adata : this.pmac(prp, adata));
     }
     
     return output.concat(w.concat(bi, w.clamp(checksum, tlen)));
@@ -89,13 +96,14 @@ sjcl.mode.ocb2 = {
     }
     tlen  = tlen || 64;
     var i,
-        times2 = sjcl.mode.ocb2._times2,
+        times2 = this._times2,
         w = sjcl.bitArray,
         xor = w._xor4,
         checksum = [0,0,0,0],
         delta = times2(prp.encrypt(iv)),
         bi, bl,
         len = sjcl.bitArray.bitLength(ciphertext) - tlen,
+        lenmax = len/32,
         output = [],
         pad;
         
@@ -107,6 +115,10 @@ sjcl.mode.ocb2 = {
       checksum = xor(checksum, bi);
       output = output.concat(bi);
       delta = times2(delta);
+      if (0 == (i & 0x0FFFFF)) {
+          // fire a progress event every MiB
+          this.fireEvent('progress', ['decrypt', i, lenmax]);
+      }
     }
     
     /* Chop out and decrypt the final block */
@@ -120,7 +132,7 @@ sjcl.mode.ocb2 = {
     
     /* MAC the header */
     if (adata.length) {
-      checksum = xor(checksum, premac ? adata : sjcl.mode.ocb2.pmac(prp, adata));
+      checksum = xor(checksum, premac ? adata : this.pmac(prp, adata));
     }
     
     if (!w.equal(w.clamp(checksum, tlen), w.bitSlice(ciphertext, len))) {
@@ -136,7 +148,7 @@ sjcl.mode.ocb2 = {
    */
   pmac: function(prp, adata) {
     var i,
-        times2 = sjcl.mode.ocb2._times2,
+        times2 = this._times2,
         w = sjcl.bitArray,
         xor = w._xor4,
         checksum = [0,0,0,0],
@@ -168,4 +180,4 @@ sjcl.mode.ocb2 = {
             x[2]<<1 ^ x[3]>>>31,
             x[3]<<1 ^ (x[0]>>>31)*0x87];
   }
-};
+});

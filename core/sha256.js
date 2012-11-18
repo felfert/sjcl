@@ -45,6 +45,8 @@ sjcl.hash.sha256.prototype = {
    * @constant
    */
   blockSize: 512,
+
+  _utf8codec: new sjcl.codec.utf8String(),
    
   /**
    * Reset the hash state.
@@ -64,7 +66,7 @@ sjcl.hash.sha256.prototype = {
    */
   update: function (data) {
     if (typeof data === "string") {
-      data = sjcl.codec.utf8String.toBits(data);
+      data = this.utf8codec.toBits(data);
     }
     var i, b = this._buffer = sjcl.bitArray.concat(this._buffer, data),
         ol = this._length,

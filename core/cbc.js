@@ -17,7 +17,10 @@ if (sjcl.beware === undefined) {
 }
 sjcl.beware["CBC mode is dangerous because it doesn't protect message integrity."
 ] = function() {
-  sjcl.mode.cbc = {
+  sjcl.mode.cbc = new Class({
+
+    Implements: Events,
+
     /** The name of the mode.
      * @constant
      */
@@ -53,6 +56,10 @@ sjcl.beware["CBC mode is dangerous because it doesn't protect message integrity.
         /* Encrypt a non-final block */
         iv = prp.encrypt(xor(iv, plaintext.slice(i,i+4)));
         output.splice(i,0,iv[0],iv[1],iv[2],iv[3]);
+        if (0 == (i & 0x0FFFFF)) {
+          // fire a progress event every MiB
+          this.fireEvent('progress', ['encrypt', i, bl]);
+        }
       }
       
       /* Construct the pad. */
@@ -96,6 +103,10 @@ sjcl.beware["CBC mode is dangerous because it doesn't protect message integrity.
         bo = xor(iv,prp.decrypt(bi));
         output.splice(i,0,bo[0],bo[1],bo[2],bo[3]);
         iv = bi;
+        if (0 == (i & 0x0FFFFF)) {
+          // fire a progress event every MiB
+          this.fireEvent('progress', ['decrypt', i, ciphertext.length]);
+        }
       }
 
       /* check and remove the pad */
@@ -111,5 +122,5 @@ sjcl.beware["CBC mode is dangerous because it doesn't protect message integrity.
 
       return w.bitSlice(output, 0, output.length*32 - bi*8);
     }
-  };
+  });
 };

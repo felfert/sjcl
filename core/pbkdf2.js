@@ -27,7 +27,7 @@ sjcl.misc.pbkdf2 = function (password, salt, count, length, Prff) {
   }
   
   if (typeof password === "string") {
-    password = sjcl.codec.utf8String.toBits(password);
+    password = (new sjcl.codec.utf8String()).toBits(password);
   }
   
   Prff = Prff || sjcl.misc.hmac;

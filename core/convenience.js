@@ -10,6 +10,8 @@
   /** Default values for encryption */
   defaults: { v:1, iter:1000, ks:128, ts:64, mode:"ccm", adata:"", cipher:"aes" },
 
+  utf8codec: new sjcl.codec.utf8String(),
+
   /** Simple encryption function.
    * @param {String|bitArray} password The password or key.
    * @param {String} plaintext The data to encrypt.
@@ -48,10 +50,10 @@
       p.salt = tmp.salt;
     }
     if (typeof plaintext === "string") {
-      plaintext = sjcl.codec.utf8String.toBits(plaintext);
+      plaintext = j.utf8codec.toBits(plaintext);
     }
     if (typeof adata === "string") {
-      adata = sjcl.codec.utf8String.toBits(adata);
+      adata = j.utf8codec.toBits(adata);
     }
     prp = new sjcl.cipher[p.cipher](password);
     
@@ -103,7 +105,7 @@
       p.salt  = tmp.salt;
     }
     if (typeof adata === "string") {
-      adata = sjcl.codec.utf8String.toBits(adata);
+      adata = j.utf8codec.toBits(adata);
     }
     prp = new sjcl.cipher[p.cipher](password);
     
@@ -114,7 +116,7 @@
     j._add(rp, p);
     rp.key = password;
     
-    return sjcl.codec.utf8String.fromBits(ct);
+    return j.utf8codec.utf8String.fromBits(ct);
   },
   
   /** Encode a flat structure into a JSON string.

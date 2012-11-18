@@ -9,7 +9,10 @@
  */
 
 /** @namespace CTR mode with CBC MAC. */
-sjcl.mode.ccm = {
+sjcl.mode.ccm = new Class({
+
+  Implements: Events,
+
   /** The name of the mode.
    * @constant
    */
@@ -39,10 +42,10 @@ sjcl.mode.ccm = {
     iv = w.clamp(iv,8*(15-L));
     
     // compute the tag
-    tag = sjcl.mode.ccm._computeTag(prf, plaintext, iv, adata, tlen, L);
+    tag = this._computeTag(prf, plaintext, iv, adata, tlen, L);
     
     // encrypt
-    out = sjcl.mode.ccm._ctrMode(prf, out, iv, tag, tlen, L);
+    out = this._ctrMode('encrypt', prf, out, iv, tag, tlen, L);
     
     return w.concat(out.data, out.tag);
   },
@@ -79,10 +82,10 @@ sjcl.mode.ccm = {
     iv = w.clamp(iv,8*(15-L));
     
     // decrypt
-    out = sjcl.mode.ccm._ctrMode(prf, out, iv, tag, tlen, L);
+    out = this._ctrMode('decrypt', prf, out, iv, tag, tlen, L);
     
     // check the tag
-    tag2 = sjcl.mode.ccm._computeTag(prf, out.data, iv, adata, tlen, L);
+    tag2 = this._computeTag(prf, out.data, iv, adata, tlen, L);
     if (!w.equal(out.tag, tag2)) {
       throw new sjcl.exception.corrupt("ccm: tag doesn't match");
     }
@@ -151,6 +154,7 @@ sjcl.mode.ccm = {
   /** CCM CTR mode.
    * Encrypt or decrypt data and tag with the prf in CCM-style CTR mode.
    * May mutate its arguments.
+   * @param {String} dir Direction for logging purposes.
    * @param {Object} prf The PRF.
    * @param {bitArray} data The data to be encrypted or decrypted.
    * @param {bitArray} iv The initialization vector.
@@ -160,7 +164,7 @@ sjcl.mode.ccm = {
    * @return {Object} An object with data and tag, the en/decryption of data and tag values.
    * @private
    */
-  _ctrMode: function(prf, data, iv, tag, tlen, L) {
+  _ctrMode: function(dir, prf, data, iv, tag, tlen, L) {
     var enc, i, w=sjcl.bitArray, xor = w._xor4, ctr, b, l = data.length, bl=w.bitLength(data);
 
     // start the ctr
@@ -179,7 +183,11 @@ sjcl.mode.ccm = {
       data[i+1] ^= enc[1];
       data[i+2] ^= enc[2];
       data[i+3] ^= enc[3];
+      if (0 == (i & 0x0FFFFF)) {
+          // fire a progress event every MiB
+          this.fireEvent('progress', [dir, i, l]);
+      }
     }
     return { tag:tag, data:w.clamp(data,bl) };
   }
-};
+});
