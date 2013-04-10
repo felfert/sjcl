@@ -10,9 +10,14 @@ function testCore(coreName, cb) {
     "cbc_vectors.js",
     "ocb2_test.js",
     "ocb2_vectors.js",
+    "gcm_test.js",
+    "gcm_vectors.js",
     "sha256_test.js",
     "sha256_vectors.js",
     "sha256_test_brute_force.js",
+    "sha512_test.js",
+    "sha512_vectors.js",
+    "sha512_test_brute_force.js",
     "sha1_test.js",
     "sha1_vectors.js",
     "hmac_test.js",
@@ -21,9 +26,11 @@ function testCore(coreName, cb) {
     "bn_test.js",
     "bn_vectors.js",
     "ecdsa_test.js",
+    "ecdsa_vectors.js",
     "ecdh_test.js",
     "srp_test.js",
-    "srp_vectors.js"
+    "srp_vectors.js",
+    "ecc_conv.js"
   ], i;
   
   for (i=1; i<testFiles.length; i++) {

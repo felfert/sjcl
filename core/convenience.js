@@ -48,6 +48,10 @@
       tmp = sjcl.misc.cachedPbkdf2(password, p);
       password = tmp.key.slice(0,p.ks/32);
       p.salt = tmp.salt;
+    } else if (sjcl.ecc && password instanceof sjcl.ecc.elGamal.publicKey) {
+      tmp = password.kem();
+      p.kemtag = tmp.tag;
+      password = tmp.key.slice(0,p.ks/32);
     }
     if (typeof plaintext === "string") {
       plaintext = j.utf8codec.toBits(plaintext);
@@ -103,6 +107,8 @@
       tmp = sjcl.misc.cachedPbkdf2(password, p);
       password = tmp.key.slice(0,p.ks/32);
       p.salt  = tmp.salt;
+    } else if (sjcl.ecc && password instanceof sjcl.ecc.elGamal.secretKey) {
+      password = password.unkem(sjcl.codec.base64.toBits(p.kemtag)).slice(0,p.ks/32);
     }
     if (typeof adata === "string") {
       adata = j.utf8codec.toBits(adata);
@@ -132,7 +138,7 @@
         if (!i.match(/^[a-z0-9]+$/i)) {
           throw new sjcl.exception.invalid("json encode: invalid property name");
         }
-        out += comma + '"' + i + '"' + ':';
+        out += comma + '"' + i + '":';
         comma = ',';
         
         switch (typeof obj[i]) {
@@ -146,7 +152,7 @@
           break;
         
         case 'object':
-          out += '"' + sjcl.codec.base64.fromBits(obj[i],1) + '"';
+          out += '"' + sjcl.codec.base64.fromBits(obj[i],0) + '"';
           break;
         
         default:
