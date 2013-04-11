@@ -62,7 +62,6 @@ sjcl.prng = function(paranoia) {
   this._defaultParanoia         = paranoia || 6;
 
   /* event listener stuff */
-  this._initilized              = false;
   this._collectorsStarted       = false;
   this._callbacks               = {progress: {}, seeded: {}};
   this._callbackI               = 0;
@@ -76,6 +75,8 @@ sjcl.prng = function(paranoia) {
   this._PARANOIA_LEVELS         = [0,48,64,96,128,192,256,384,512,768,1024];
   this._MILLISECONDS_PER_RESEED = 30000;
   this._BITS_PER_RESEED         = 80;
+
+  this.init();
 };
 
 sjcl.prng.prototype = {
@@ -104,9 +105,9 @@ sjcl.prng.prototype = {
      * state to draw from*/
     this._loadPoolState();
     if (window.addEventListener) {
-      window.addEventListener("beforeunload", this._savePoolState, false);
+      window.addEventListener("beforeunload", this._savePoolState.bind(this), false);
     } else if (document.attachEvent) {
-      document.attachEvent("onbeforeunload", this._savePoolState);
+      document.attachEvent("onbeforeunload", this._savePoolState.bind(this));
     }	
   },
 
@@ -268,14 +269,20 @@ sjcl.prng.prototype = {
   startCollectors: function () {
     if (this._collectorsStarted) { return; }
 
+    /* Since bind creates a *new* function, we must save that in order to
+     * be able to unbind it.
+     */
+    this._mouseCollectorBound = this._mouseCollector.bind(this);
+    this._keyboardCollectorBound = this._keyboardCollector.bind(this);
+    this._accelerometerCollectorBound = this._accelerometerCollector.bind(this);
     if (window.addEventListener) {
-      window.addEventListener("mousemove", this._mouseCollector, false);
-      window.addEventListener("keypress", this._keyboardCollector, false);
-      window.addEventListener("devicemotion", this._accelerometerCollector, false);
+      window.addEventListener("mousemove", this._mouseCollectorBound, false);
+      window.addEventListener("keypress", this._keyboardCollectorBound, false);
+      window.addEventListener("devicemotion", this._accelerometerCollectorBound, false);
     } else if (document.attachEvent) {
-      document.attachEvent("onmousemove", this._mouseCollector);
-      document.attachEvent("onkeypress", this._keyboardCollector);
-      document.attachEvent("ondevicemotion", this._accelerometerCollector);
+      document.attachEvent("onmousemove", this._mouseCollectorBound);
+      document.attachEvent("onkeypress", this._keyboardCollectorBound);
+      document.attachEvent("ondevicemotion", this._accelerometerCollectorBound);
     }
     else {
       throw new sjcl.exception.bug("can't attach event");
@@ -289,13 +296,13 @@ sjcl.prng.prototype = {
     if (!this._collectorsStarted) { return; }
 
     if (window.removeEventListener) {
-      window.removeEventListener("mousemove", this._mouseCollector, false);
-      window.removeEventListener("keypress", this._keyboardCollector, false);
-      window.removeEventListener("devicemotion", this._accelerometerCollector, false);      
+      window.removeEventListener("mousemove", this._mouseCollectorBound, false);
+      window.removeEventListener("keypress", this._keyboardCollectorBound, false);
+      window.removeEventListener("devicemotion", this._accelerometerCollectorBound, false);      
     } else if (window.detachEvent) {
-      window.detachEvent("onmousemove", this._mouseCollector);
-      window.detachEvent("onkeypress", this._keyboardCollector);
-      window.detachEvent("ondevicemotion", this._accelerometerCollector);      
+      window.detachEvent("onmousemove", this._mouseCollectorBound);
+      window.detachEvent("onkeypress", this._keyboardCollectorBound);
+      window.detachEvent("ondevicemotion", this._accelerometerCollectorBound);      
     }
     this._collectorsStarted = false;
   },
@@ -400,16 +407,16 @@ sjcl.prng.prototype = {
 
   _keyboardCollector: function (ev) {
     var chCode = ('charCode' in ev) ? ev.charCode : ev.keyCode;
-    sjcl.random.addEntropy(chCode, 1, "keyboard");
-  },  
+    this.addEntropy(chCode, 1, "keyboard");
+  },
 
   _mouseCollector: function (ev) {
     var x = ev.x || ev.clientX || ev.offsetX || 0, y = ev.y || ev.clientY || ev.offsetY || 0;
-    sjcl.random.addEntropy([x,y], 2, "mouse");
+    this.addEntropy([x,y], 2, "mouse");
   },
 
   _accelerometerCollector: function (ev) {
-    sjcl.random.addEntropy([
+    this.addEntropy([
         ev.accelerationIncludingGravity.x||'',
         ev.accelerationIncludingGravity.y||'',
         ev.accelerationIncludingGravity.z||'',
@@ -418,7 +425,7 @@ sjcl.prng.prototype = {
   },
 
   _fireEvent: function (name, arg) {
-    var j, cbs = sjcl.random._callbacks[name], cbsTemp=[];
+    var j, cbs = this._callbacks[name], cbsTemp=[];
     /* TODO: there is a race condition between removing collectors and firing them */ 
 
     /* I'm not sure if this is necessary; in C++, iterating over a
@@ -438,7 +445,7 @@ sjcl.prng.prototype = {
 
   _savePoolState: function (ev) {
     if(window.localStorage){
-      window.localStorage.setItem("sjcl.prng", sjcl.random.randomWords(4));
+      window.localStorage.setItem("sjcl.prng", this.randomWords(4));
     }
   },
 
@@ -449,7 +456,7 @@ sjcl.prng.prototype = {
       if(r){
         /* Assume the worst, that localStorage was compromised with
          * XSS and therefore contributes a worst case of 0 entropy*/
-        sjcl.random.addEntropy(r, 0, "loadpool");
+        this.addEntropy(r, 0, "loadpool");
       }
     }
   },
