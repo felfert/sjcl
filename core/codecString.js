@@ -6,9 +6,39 @@
  */
  
 /** @namespace UTF-8 strings */
-sjcl.codec.utf8String = new Class({
+sjcl.codec.utf8String = function() {
+    var me = this;
+    me._listeners = [];
+};
 
-    Implements: Events,
+sjcl.codec.utf8String.prototype = {
+
+    /* private */
+    _fireProgress: function(args) {
+        var j;
+        for (j = 0; j < this._listeners.length; ++j) {
+            this._listeners[j].fn.apply(this._listeners[j].scope, args);
+        }
+    },
+    /** add an event listener */
+    addEventListener: function (name, callback, scope) {
+        if (name === 'progress') {
+            scope = scope || this;
+            this._listeners.push({fn:callback,scope:scope});
+        }
+    },
+    /** remove an event listener */
+    removeEventListener: function (name, callback, scope) {
+        var j;
+        if (name === 'progress') {
+            scope = scope || this;
+            for (j = 0; j < this._listeners.length; ++j) {
+                if ((this._listeners[j].fn === callback) && (this._listeners[j].scope === scope)) {
+                    this._listeners.splice(j, 1);
+                }
+            }
+        }
+    },
 
     /** Convert from a bitArray to a UTF-8 string. */
     fromBits: function (arr) {
@@ -21,7 +51,7 @@ sjcl.codec.utf8String = new Class({
             tmp <<= 8;
             if (0 == (i & 0x0FFFFF)) {
                 // fire a progress event every MiB
-                this.fireEvent('progress', ['finish', i, bl/8]);
+                this._fireProgress(['finish', i, bl/8]);
             }
         }
         return decodeURIComponent(escape(out));
@@ -39,7 +69,7 @@ sjcl.codec.utf8String = new Class({
             }
             if (0 == (i & 0x0FFFFF)) {
                 // fire a progress event every MiB
-                this.fireEvent('progress', ['prepare', i, str.length]);
+                this._fireProgress(['prepare', i, str.length]);
             }
         }
         if (i&3) {
@@ -47,4 +77,4 @@ sjcl.codec.utf8String = new Class({
         }
         return out;
     }
-});
+};
