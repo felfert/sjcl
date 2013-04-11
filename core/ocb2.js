@@ -85,7 +85,7 @@ sjcl.mode.ocb2.prototype = {
       checksum = xor(checksum, bi);
       output = output.concat(xor(delta,prp.encrypt(xor(delta, bi))));
       delta = times2(delta);
-      if (0 == (i & 0x0FFFFF)) {
+      if (0 === (i & 0x0FFFFF)) {
           // fire a progress event every MiB
           this._fireProgress(['encrypt', i, plaintext.length]);
       }
@@ -145,7 +145,7 @@ sjcl.mode.ocb2.prototype = {
       checksum = xor(checksum, bi);
       output = output.concat(bi);
       delta = times2(delta);
-      if (0 == (i & 0x0FFFFF)) {
+      if (0 === (i & 0x0FFFFF)) {
           // fire a progress event every MiB
           this._fireProgress(['decrypt', i, lenmax]);
       }

@@ -49,10 +49,10 @@ sjcl.prng = function() {
   this._reseedCount             = 0;
   this._robins                  = {};
   this._eventId                 = 0;
-  
+
   this._collectorIds            = {};
   this._collectorIdNext         = 0;
-  
+
   this._strength                = 0;
   this._poolStrength            = 0;
   this._nextReseed              = 0;
@@ -60,13 +60,13 @@ sjcl.prng = function() {
   this._counter                 = [0,0,0,0];
   this._cipher                  = undefined;
   this._defaultParanoia         = 6;
-  
+
   /* event listener stuff */
   this._initilized              = false;
   this._collectorsStarted       = false;
   this._callbacks               = {progress: {}, seeded: {}};
   this._callbackI               = 0;
-  
+
   /* constants */
   this._NOT_READY               = 0;
   this._READY                   = 1;
@@ -76,68 +76,69 @@ sjcl.prng = function() {
   this._PARANOIA_LEVELS         = [0,48,64,96,128,192,256,384,512,768,1024];
   this._MILLISECONDS_PER_RESEED = 30000;
   this._BITS_PER_RESEED         = 80;
-}
+};
 
 sjcl.prng.prototype = {
   /** Prepare the entorpy pools for use.
-   */
+  */
   init: function () {
+    var r, x;
     /* sjcl.prng is useless without the following line,  
      * this should be started as soon as possilbe to collect the most
      * entorpy*/
-	this.startCollectors();
-	
-	/*Initlize the entropy pool with information the attacker doesn't 
-	 *know*/
-	for(var x=0; x<48; x++){
-	  r = this._platformPRNG();
-	  this.addEntropy(r, 1, "init");
-	}
-	
-	/*We should be over https and these would be valid secrets.
-	 * Worst case adding more data doesn't hurt*/
-	this.addEntropy(document.cookie, 0, "cookie");
-	this.addEntropy(document.location.href, 0, "location");
-	
-	/*If sjcl.prng has run before then we should have a preivous 
-	 * state to draw from*/
-	this._loadPoolState();
+    this.startCollectors();
+
+    /*Initlize the entropy pool with information the attacker doesn't 
+     *know*/
+    for(x=0; x<48; x++){
+      r = this._platformPRNG();
+      this.addEntropy(r, 1, "init");
+    }
+
+    /*We should be over https and these would be valid secrets.
+     * Worst case adding more data doesn't hurt*/
+    this.addEntropy(document.cookie, 0, "cookie");
+    this.addEntropy(document.location.href, 0, "location");
+
+    /*If sjcl.prng has run before then we should have a preivous 
+     * state to draw from*/
+    this._loadPoolState();
     if (window.addEventListener) {
       window.addEventListener("beforeunload", this._savePoolState, false);
     } else if (document.attachEvent) {
       document.attachEvent("onbeforeunload", this._savePoolState);
     }	
   },
-	
+
   /** Generate several random words, and return them in an array
    * @param {Number} nwords The number of words to generate.
    */
   randomWords: function (nwords, paranoia) {
     var out = [], i, readiness = this.isReady(paranoia), g;
-  
+
     if (readiness === this._NOT_READY) {
       throw new sjcl.exception.notReady("generator isn't seeded");
     } else if (readiness & this._REQUIRES_RESEED) {
       this._reseedFromPools(!(readiness & this._READY));
     }
-  
+
     for (i=0; i<nwords; i+= 4) {
       if ((i+1) % this._MAX_WORDS_PER_BURST === 0) {
         this._gate();
       }
-   
+
       g = this._gen4words();
       out.push(g[0],g[1],g[2],g[3]);
     }
     this._gate();
-  
+
     return out.slice(0,nwords);
   },
-  
+
   setDefaultParanoia: function (paranoia) {
     this._defaultParanoia = paranoia;
   },
-  
+
   /**
    * Add entropy to the pools.
    * @param data The entropic value.  Should be a 32-bit integer, array of 32-bit integers, or string
@@ -146,86 +147,86 @@ sjcl.prng.prototype = {
    */
   addEntropy: function (data, estimatedEntropy, source) {
     source = source || "user";
-  
+
     var id,
-      i, tmp,
-      t = (new Date()).valueOf(),
-      r = this._platformPRNG(),
-      robin = this._robins[source],
-      oldReady = this.isReady(), err = 0;
-      
+        i, tmp, objName,
+        t = (new Date()).valueOf(),
+        r = this._platformPRNG(),
+        robin = this._robins[source],
+        oldReady = this.isReady(), err = 0;
+
     id = this._collectorIds[source];
     if (id === undefined) { id = this._collectorIds[source] = this._collectorIdNext ++; }
-      
+
     if (robin === undefined) { robin = this._robins[source] = 0; }
     this._robins[source] = ( this._robins[source] + 1 ) % this._pools.length;
-  
+
     switch(typeof(data)) {
-      
-    case "number":
-      if (estimatedEntropy === undefined) {
-        estimatedEntropy = 1;
-      }
-      this._pools[robin].update([id,this._eventId++,1,estimatedEntropy,t,r,1,data|0]);
-      break;
-      
-    case "object":
-      var objName = Object.prototype.toString.call(data);
-      if (objName === "[object Uint32Array]") {
-        tmp = [];
-        for (i = 0; i < data.length; i++) {
-          tmp.push(data[i]);
+
+      case "number":
+        if (estimatedEntropy === undefined) {
+          estimatedEntropy = 1;
         }
-        data = tmp;
-      } else {
-        if (objName !== "[object Array]") {
-          err = 1;
-        }
-        for (i=0; i<data.length && !err; i++) {
-          if (typeof(data[i]) != "number") {
+        this._pools[robin].update([id,this._eventId++,1,estimatedEntropy,t,r,1,data|0]);
+        break;
+
+      case "object":
+        objName = Object.prototype.toString.call(data);
+        if (objName === "[object Uint32Array]") {
+          tmp = [];
+          for (i = 0; i < data.length; i++) {
+            tmp.push(data[i]);
+          }
+          data = tmp;
+        } else {
+          if (objName !== "[object Array]") {
             err = 1;
           }
-        }
-      }
-      if (!err) {
-        if (estimatedEntropy === undefined) {
-          /* horrible entropy estimator */
-          estimatedEntropy = 0;
-          for (i=0; i<data.length; i++) {
-            tmp= data[i];
-            while (tmp>0) {
-              estimatedEntropy++;
-              tmp = tmp >>> 1;
+          for (i=0; i<data.length && !err; i++) {
+            if (typeof(data[i]) !== "number") {
+              err = 1;
             }
           }
         }
-        this._pools[robin].update([id,this._eventId++,2,estimatedEntropy,t,r,data.length].concat(data));
-      }
-      break;
-      
-    case "string":
-      if (estimatedEntropy === undefined) {
-       /* English text has just over 1 bit per character of entropy.
-        * But this might be HTML or something, and have far less
-        * entropy than English...  Oh well, let's just say one bit.
-        */
-       estimatedEntropy = data.length;
-      }
-      this._pools[robin].update([id,this._eventId++,3,estimatedEntropy,t,r,data.length]);
-      this._pools[robin].update(data);
-      break;
+        if (!err) {
+          if (estimatedEntropy === undefined) {
+            /* horrible entropy estimator */
+            estimatedEntropy = 0;
+            for (i=0; i<data.length; i++) {
+              tmp= data[i];
+              while (tmp>0) {
+                estimatedEntropy++;
+                tmp = tmp >>> 1;
+              }
+            }
+          }
+          this._pools[robin].update([id,this._eventId++,2,estimatedEntropy,t,r,data.length].concat(data));
+        }
+        break;
 
-    default:
-      err=1;
+      case "string":
+        if (estimatedEntropy === undefined) {
+          /* English text has just over 1 bit per character of entropy.
+           * But this might be HTML or something, and have far less
+           * entropy than English...  Oh well, let's just say one bit.
+           */
+          estimatedEntropy = data.length;
+        }
+        this._pools[robin].update([id,this._eventId++,3,estimatedEntropy,t,r,data.length]);
+        this._pools[robin].update(data);
+        break;
+
+      default:
+        err=1;
     }
     if (err) {
       throw new sjcl.exception.bug("random: addEntropy only supports number, array of numbers or string");
     }
-  
+
     /* record the new strength */
     this._poolEntropy[robin] += estimatedEntropy;
     this._poolStrength += estimatedEntropy;
-  
+
     /* fire off events */
     if (oldReady === this._NOT_READY) {
       if (this.isReady() !== this._NOT_READY) {
@@ -234,11 +235,11 @@ sjcl.prng.prototype = {
       this._fireEvent("progress", this.getProgress());
     }
   },
-  
+
   /** Is the generator ready? */
   isReady: function (paranoia) {
     var entropyRequired = this._PARANOIA_LEVELS[ (paranoia !== undefined) ? paranoia : this._defaultParanoia ];
-  
+
     if (this._strength && this._strength >= entropyRequired) {
       return (this._poolEntropy[0] > this._BITS_PER_RESEED && (new Date()).valueOf() > this._nextReseed) ?
         this._REQUIRES_RESEED | this._READY :
@@ -249,11 +250,11 @@ sjcl.prng.prototype = {
         this._NOT_READY;
     }
   },
-  
+
   /** Get the generator's progress toward readiness, as a fraction */
   getProgress: function (paranoia) {
     var entropyRequired = this._PARANOIA_LEVELS[ paranoia ? paranoia : this._defaultParanoia ];
-  
+
     if (this._strength >= entropyRequired) {
       return 1.0;
     } else {
@@ -262,11 +263,11 @@ sjcl.prng.prototype = {
         this._poolStrength / entropyRequired;
     }
   },
-  
+
   /** start the built-in entropy collectors */
   startCollectors: function () {
     if (this._collectorsStarted) { return; }
-  
+
     if (window.addEventListener) {
       window.addEventListener("mousemove", this._mouseCollector, false);
       window.addEventListener("keypress", this._keyboardCollector, false);
@@ -279,14 +280,14 @@ sjcl.prng.prototype = {
     else {
       throw new sjcl.exception.bug("can't attach event");
     }
-  
+
     this._collectorsStarted = true;
   },
-  
+
   /** stop the built-in entropy collectors */
   stopCollectors: function () {
     if (!this._collectorsStarted) { return; }
-  
+
     if (window.removeEventListener) {
       window.removeEventListener("mousemove", this._mouseCollector, false);
       window.removeEventListener("keypress", this._keyboardCollector, false);
@@ -298,43 +299,44 @@ sjcl.prng.prototype = {
     }
     this._collectorsStarted = false;
   },
-  
+
   /** add an event listener for progress or seeded-ness. */
   addEventListener: function (name, callback) {
     this._callbacks[name][this._callbackI++] = callback;
   },
-  
+
   /** remove an event listener for progress or seeded-ness */
   removeEventListener: function (name, cb) {
     var i, j, cbs=this._callbacks[name], jsTemp=[];
-  
+
     /* I'm not sure if this is necessary; in C++, iterating over a
      * collection and modifying it at the same time is a no-no.
      */
-  
+
     for (j in cbs) {
-	if (cbs.hasOwnProperty(j) && cbs[j] === cb) {
+      if (cbs.hasOwnProperty(j) && cbs[j] === cb) {
         jsTemp.push(j);
       }
     }
-  
+
     for (i=0; i<jsTemp.length; i++) {
       j = jsTemp[i];
       delete cbs[j];
     }
   },
-  
+
   /** Generate 4 random words, no reseed, no gate.
    * @private
    */
   _gen4words: function () {
-    for (var i=0; i<4; i++) {
+    var i;
+    for (i=0; i<4; i++) {
       this._counter[i] = this._counter[i]+1 | 0;
       if (this._counter[i]) { break; }
     }
     return this._cipher.encrypt(this._counter);
   },
-  
+
   /* Rekey the AES instance with itself after a request, or every _MAX_WORDS_PER_BURST words.
    * @private
    */
@@ -342,78 +344,79 @@ sjcl.prng.prototype = {
     this._key = this._gen4words().concat(this._gen4words());
     this._cipher = new sjcl.cipher.aes(this._key);
   },
-  
+
   /** Reseed the generator with the given words
    * @private
    */
   _reseed: function (seedWords) {
+    var i;
     this._key = sjcl.hash.sha256.hash(this._key.concat(seedWords));
     this._cipher = new sjcl.cipher.aes(this._key);
-    for (var i=0; i<4; i++) {
+    for (i=0; i<4; i++) {
       this._counter[i] = this._counter[i]+1 | 0;
       if (this._counter[i]) { break; }
     }
   },
-  
+
   /** reseed the data from the entropy pools
    * @param full If set, use all the entropy pools in the reseed.
    */
   _reseedFromPools: function (full) {
     var reseedData = [], strength = 0, i;
-  
+
     this._nextReseed = reseedData[0] =
       (new Date()).valueOf() + this._MILLISECONDS_PER_RESEED;
-    
+
     for (i=0; i<16; i++) {
       /* On some browsers, this is cryptographically random.  So we might
        * as well toss it in the pot and stir...
        */
       reseedData.push(this._platformPRNG());
     }
-    
+
     for (i=0; i<this._pools.length; i++) {
-     reseedData = reseedData.concat(this._pools[i].finalize());
-     strength += this._poolEntropy[i];
-     this._poolEntropy[i] = 0;
-   
-     if (!full && (this._reseedCount & (1<<i))) { break; }
+      reseedData = reseedData.concat(this._pools[i].finalize());
+      strength += this._poolEntropy[i];
+      this._poolEntropy[i] = 0;
+
+      if (!full && (this._reseedCount & (1<<i))) { break; }
     }
-  
+
     /* if we used the last pool, push a new one onto the stack */
     if (this._reseedCount >= 1 << this._pools.length) {
-     this._pools.push(new sjcl.hash.sha256());
-     this._poolEntropy.push(0);
+      this._pools.push(new sjcl.hash.sha256());
+      this._poolEntropy.push(0);
     }
-  
+
     /* how strong was this reseed? */
     this._poolStrength -= strength;
     if (strength > this._strength) {
       this._strength = strength;
     }
-  
+
     this._reseedCount ++;
     this._reseed(reseedData);
   },
-  
+
   _keyboardCollector: function (ev) {
     var chCode = ('charCode' in ev) ? ev.charCode : ev.keyCode;
     sjcl.prng.addEntropy(chCode, 1, "keyboard");
   },  
-  
+
   _mouseCollector: function (ev) {
     var x = ev.x || ev.clientX || ev.offsetX || 0, y = ev.y || ev.clientY || ev.offsetY || 0;
     sjcl.prng.addEntropy([x,y], 2, "mouse");
   },
-  
+
   _accelerometerCollector: function (ev) {
     sjcl.prng.addEntropy([
-      ev.accelerationIncludingGravity.x||'',
-      ev.accelerationIncludingGravity.y||'',
-      ev.accelerationIncludingGravity.z||'',
-      window.orientation||''
-    ], 3, "accelerometer");
+        ev.accelerationIncludingGravity.x||'',
+        ev.accelerationIncludingGravity.y||'',
+        ev.accelerationIncludingGravity.z||'',
+        window.orientation||''
+        ], 3, "accelerometer");
   },
-  
+
   _fireEvent: function (name, arg) {
     var j, cbs=sjcl.prng._callbacks[name], cbsTemp=[];
     /* TODO: there is a race condition between removing collectors and firing them */ 
@@ -421,53 +424,54 @@ sjcl.prng.prototype = {
     /* I'm not sure if this is necessary; in C++, iterating over a
      * collection and modifying it at the same time is a no-no.
      */
-  
+
     for (j in cbs) {
-     if (cbs.hasOwnProperty(j)) {
+      if (cbs.hasOwnProperty(j)) {
         cbsTemp.push(cbs[j]);
-     }
+      }
     }
-  
+
     for (j=0; j<cbsTemp.length; j++) {
-     cbsTemp[j](arg);
+      cbsTemp[j](arg);
     }
   },
-  
+
   _savePoolState: function (ev) {
     if(window.localStorage){
-		window.localStorage.setItem("sjcl.prng",sjcl.prng._gen4words());
-	}
+      window.localStorage.setItem("sjcl.prng",sjcl.prng._gen4words());
+    }
   },
-  
+
   _loadPoolState: function () {
-	 if(window.localStorage){
-	    var r= window.localStorage.getItem("sjcl.prng");
-	    if(r){
-		  /* Assume the worst, that localStorage was compromised with
-		   * XSS and therefore contributes a worst case of 0 entropy*/
-	      sjcl.prng.addEntropy(r, 0, "loadpool");
-	    }
-	 }
+    var r;
+    if(window.localStorage){
+      r= window.localStorage.getItem("sjcl.prng");
+      if(r){
+        /* Assume the worst, that localStorage was compromised with
+         * XSS and therefore contributes a worst case of 0 entropy*/
+        sjcl.prng.addEntropy(r, 0, "loadpool");
+      }
+    }
   },
-  
+
   /** Return the best random value aviable to this script.
-   */
+  */
   _platformPRNG: function () {
-	  var ret;
-	  if(typeof window.crypto.getRandomValues == 'function'){
-         var ab = new Uint32Array(1);
-		 window.crypto.getRandomValues(ab);
-		 ret = ab[0];
-      }else{
-		  /*This is the best we can do,  
-		   *this method is cryptographically random on some platforms*/
-		  ret = Math.random()*0x100000000|0;
-	  }
-	  return ret;
+    var ret, ab;
+    if(typeof window.crypto.getRandomValues === 'function'){
+      ab = new Uint32Array(1);
+      window.crypto.getRandomValues(ab);
+      ret = ab[0];
+    }else{
+      /*This is the best we can do,  
+       *this method is cryptographically random on some platforms*/
+      ret = Math.random()*0x100000000|0;
+    }
+    return ret;
   }
 };
 
 (function(){
-   /*Make sure the sjcl.prng is ready to use*/
-   sjcl.prng.init();
+  /* Make sure the sjcl.prng is ready to use*/
+  sjcl.prng.init();
 })();

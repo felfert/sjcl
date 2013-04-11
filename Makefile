@@ -9,10 +9,15 @@ include config.mk
 
 .PHONY: all test test_yui test_closure test_uncompressed lint compression_stats
 
-all: sjcl.js
+all: sjcl.js Sjcl.js
 
 sjcl.js: $(COMPRESS)
 	cp $^ $@
+
+Sjcl.js: compress/ExtJSheader.txt sjcl.js config.mk
+	cat compress/ExtJSheader.txt > $@
+	echo '/* features:' $(subst sjcl ,,$(patsubst core/%.js,%,$(SOURCES))) '*/' >> $@
+	cat sjcl.js >> $@
 
 core.js: $(SOURCES) config.mk
 	cat $(SOURCES) > $@
@@ -88,7 +93,7 @@ tidy:
 	rm -f core.js core_*.js
 
 clean: tidy
-	rm -fr sjcl.js doc doc_private
+	rm -fr sjcl.js Sjcl.js doc doc_private
 
 distclean: clean
 	./configure

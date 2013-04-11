@@ -49,7 +49,7 @@ sjcl.codec.utf8String.prototype = {
             }
             out += String.fromCharCode(tmp >>> 24);
             tmp <<= 8;
-            if (0 == (i & 0x0FFFFF)) {
+            if (0 === (i & 0x0FFFFF)) {
                 // fire a progress event every MiB
                 this._fireProgress(['finish', i, bl/8]);
             }
@@ -67,7 +67,7 @@ sjcl.codec.utf8String.prototype = {
                 out.push(tmp);
                 tmp = 0;
             }
-            if (0 == (i & 0x0FFFFF)) {
+            if (0 === (i & 0x0FFFFF)) {
                 // fire a progress event every MiB
                 this._fireProgress(['prepare', i, str.length]);
             }

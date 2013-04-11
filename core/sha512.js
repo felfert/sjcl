@@ -215,13 +215,32 @@ sjcl.hash.sha512.prototype = {
         h0h = h[ 0], h0l = h[ 1], h1h = h[ 2], h1l = h[ 3],
         h2h = h[ 4], h2l = h[ 5], h3h = h[ 6], h3l = h[ 7],
         h4h = h[ 8], h4l = h[ 9], h5h = h[10], h5l = h[11],
-        h6h = h[12], h6l = h[13], h7h = h[14], h7l = h[15];
+        h6h = h[12], h6l = h[13], h7h = h[14], h7l = h[15],
 
     // Working variables
-    var ah = h0h, al = h0l, bh = h1h, bl = h1l,
+        ah = h0h, al = h0l, bh = h1h, bl = h1l,
         ch = h2h, cl = h2l, dh = h3h, dl = h3l,
         eh = h4h, el = h4l, fh = h5h, fl = h5l,
-        gh = h6h, gl = h6l, hh = h7h, hl = h7l;
+        gh = h6h, gl = h6l, hh = h7h, hl = h7l,
+
+    // Gamma0 variables
+    gamma0xh, gamma0xl, gamma0h, gamma0l,
+    // Gamma1 variables
+    gamma1xh, gamma1xl, gamma1h, gamma1l,
+    // Shortcut variables
+    wr7h, wr7l, wr16h, wr16l,
+    // Ch variables
+    chh, chl,
+    // Maj variables
+    majh, majl,
+    // Sigma0 variables
+    sigma0h, sigma0l,
+    // Sigma1 variables
+    sigma1h, sigma1l,
+    // K(round) variables
+    krh, krl,
+    // misc others
+    t1h, t1l, t2h, t2l;
 
     for (i=0; i<80; i++) {
       // load up the input word for this round
@@ -230,35 +249,35 @@ sjcl.hash.sha512.prototype = {
         wrl = w[i * 2 + 1];
       } else {
         // Gamma0
-        var gamma0xh = w[(i-15) * 2];
-        var gamma0xl = w[(i-15) * 2 + 1];
-        var gamma0h =
+        gamma0xh = w[(i-15) * 2];
+        gamma0xl = w[(i-15) * 2 + 1];
+        gamma0h =
           ((gamma0xl << 31) | (gamma0xh >>> 1)) ^
           ((gamma0xl << 24) | (gamma0xh >>> 8)) ^
            (gamma0xh >>> 7);
-        var gamma0l =
+        gamma0l =
           ((gamma0xh << 31) | (gamma0xl >>> 1)) ^
           ((gamma0xh << 24) | (gamma0xl >>> 8)) ^
           ((gamma0xh << 25) | (gamma0xl >>> 7));
 
         // Gamma1
-        var gamma1xh = w[(i-2) * 2];
-        var gamma1xl = w[(i-2) * 2 + 1];
-        var gamma1h =
+        gamma1xh = w[(i-2) * 2];
+        gamma1xl = w[(i-2) * 2 + 1];
+        gamma1h =
           ((gamma1xl << 13) | (gamma1xh >>> 19)) ^
           ((gamma1xh << 3)  | (gamma1xl >>> 29)) ^
            (gamma1xh >>> 6);
-        var gamma1l =
+        gamma1l =
           ((gamma1xh << 13) | (gamma1xl >>> 19)) ^
           ((gamma1xl << 3)  | (gamma1xh >>> 29)) ^
           ((gamma1xh << 26) | (gamma1xl >>> 6));
 
         // Shortcuts
-        var wr7h = w[(i-7) * 2];
-        var wr7l = w[(i-7) * 2 + 1];
+        wr7h = w[(i-7) * 2];
+        wr7l = w[(i-7) * 2 + 1];
 
-        var wr16h = w[(i-16) * 2];
-        var wr16l = w[(i-16) * 2 + 1];
+        wr16h = w[(i-16) * 2];
+        wr16l = w[(i-16) * 2 + 1];
 
         // W(round) = gamma0 + W(round - 7) + gamma1 + W(round - 16)
         wrl = gamma0l + wr7l;
@@ -273,28 +292,28 @@ sjcl.hash.sha512.prototype = {
       w[i*2 + 1] = wrl |= 0;
 
       // Ch
-      var chh = (eh & fh) ^ (~eh & gh);
-      var chl = (el & fl) ^ (~el & gl);
+      chh = (eh & fh) ^ (~eh & gh);
+      chl = (el & fl) ^ (~el & gl);
 
       // Maj
-      var majh = (ah & bh) ^ (ah & ch) ^ (bh & ch);
-      var majl = (al & bl) ^ (al & cl) ^ (bl & cl);
+      majh = (ah & bh) ^ (ah & ch) ^ (bh & ch);
+      majl = (al & bl) ^ (al & cl) ^ (bl & cl);
 
       // Sigma0
-      var sigma0h = ((al << 4) | (ah >>> 28)) ^ ((ah << 30) | (al >>> 2)) ^ ((ah << 25) | (al >>> 7));
-      var sigma0l = ((ah << 4) | (al >>> 28)) ^ ((al << 30) | (ah >>> 2)) ^ ((al << 25) | (ah >>> 7));
+      sigma0h = ((al << 4) | (ah >>> 28)) ^ ((ah << 30) | (al >>> 2)) ^ ((ah << 25) | (al >>> 7));
+      sigma0l = ((ah << 4) | (al >>> 28)) ^ ((al << 30) | (ah >>> 2)) ^ ((al << 25) | (ah >>> 7));
 
       // Sigma1
-      var sigma1h = ((el << 18) | (eh >>> 14)) ^ ((el << 14) | (eh >>> 18)) ^ ((eh << 23) | (el >>> 9));
-      var sigma1l = ((eh << 18) | (el >>> 14)) ^ ((eh << 14) | (el >>> 18)) ^ ((el << 23) | (eh >>> 9));
+      sigma1h = ((el << 18) | (eh >>> 14)) ^ ((el << 14) | (eh >>> 18)) ^ ((eh << 23) | (el >>> 9));
+      sigma1l = ((eh << 18) | (el >>> 14)) ^ ((eh << 14) | (el >>> 18)) ^ ((el << 23) | (eh >>> 9));
 
       // K(round)
-      var krh = k[i*2];
-      var krl = k[i*2+1];
+      krh = k[i*2];
+      krl = k[i*2+1];
 
       // t1 = h + sigma1 + ch + K(round) + W(round)
-      var t1l = hl + sigma1l;
-      var t1h = hh + sigma1h + ((t1l >>> 0) < (hl >>> 0) ? 1 : 0);
+      t1l = hl + sigma1l;
+      t1h = hh + sigma1h + ((t1l >>> 0) < (hl >>> 0) ? 1 : 0);
       t1l += chl;
       t1h += chh + ((t1l >>> 0) < (chl >>> 0) ? 1 : 0);
       t1l += krl;
@@ -303,8 +322,8 @@ sjcl.hash.sha512.prototype = {
       t1h += wrh + ((t1l >>> 0) < (wrl >>> 0) ? 1 : 0);
 
       // t2 = sigma0 + maj
-      var t2l = sigma0l + majl;
-      var t2h = sigma0h + majh + ((t2l >>> 0) < (sigma0l >>> 0) ? 1 : 0);
+      t2l = sigma0l + majl;
+      t2h = sigma0h + majh + ((t2l >>> 0) < (sigma0l >>> 0) ? 1 : 0);
 
       // Update working variables
       hh = gh;

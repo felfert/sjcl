@@ -213,7 +213,7 @@ sjcl.mode.ccm.prototype = {
       data[i+1] ^= enc[1];
       data[i+2] ^= enc[2];
       data[i+3] ^= enc[3];
-      if (0 == (i & 0x0FFFFF)) {
+      if (0 === (i & 0x0FFFFF)) {
           // fire a progress event every MiB
           this._fireProgress([dir, i, l]);
       }

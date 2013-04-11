@@ -86,7 +86,7 @@ sjcl.beware["CBC mode is dangerous because it doesn't protect message integrity.
         /* Encrypt a non-final block */
         iv = prp.encrypt(xor(iv, plaintext.slice(i,i+4)));
         output.splice(i,0,iv[0],iv[1],iv[2],iv[3]);
-        if (0 == (i & 0x0FFFFF)) {
+        if (0 === (i & 0x0FFFFF)) {
           // fire a progress event every MiB
           this._fireProgress(['encrypt', i, bl]);
         }
@@ -133,7 +133,7 @@ sjcl.beware["CBC mode is dangerous because it doesn't protect message integrity.
         bo = xor(iv,prp.decrypt(bi));
         output.splice(i,0,bo[0],bo[1],bo[2],bo[3]);
         iv = bi;
-        if (0 == (i & 0x0FFFFF)) {
+        if (0 === (i & 0x0FFFFF)) {
           // fire a progress event every MiB
           this._fireProgress(['decrypt', i, ciphertext.length]);
         }

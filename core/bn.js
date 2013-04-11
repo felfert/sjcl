@@ -532,7 +532,7 @@ sjcl.bn.random = function(modulus, paranoia) {
   while (true) {
     // get a sequence whose first digits make sense
     do {
-      words = sjcl.random.randomWords(l, paranoia);
+      words = sjcl.prng.randomWords(l, paranoia);
       if (words[l-1] < 0) { words[l-1] += 0x100000000; }
     } while (Math.floor(words[l-1] / m) === Math.floor(0x100000000 / m));
     words[l-1] %= m;

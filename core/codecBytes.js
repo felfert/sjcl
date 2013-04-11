@@ -49,7 +49,7 @@ sjcl.codec.bytes.prototype = {
             }
             out.push(tmp >>> 24);
             tmp <<= 8;
-            if (0 == (i & 0x0FFFFF)) {
+            if (0 === (i & 0x0FFFFF)) {
                 // fire a progress event every MiB
                 this._fireProgress(['finish', i, bl/8]);
             }
@@ -65,7 +65,7 @@ sjcl.codec.bytes.prototype = {
         l = bl & ~3;
         for (i=0; i<l; i+=4) {
             dv.setInt32(i, arr[i/4]);
-            if (0 == (i & 0x0FFFFF)) {
+            if (0 === (i & 0x0FFFFF)) {
                 // fire a progress event every MiB
                 this._fireProgress(['finish', i, bl]);
             }
@@ -86,7 +86,7 @@ sjcl.codec.bytes.prototype = {
         var dv = new DataView(bytes);
         for (i=0; i<l; i+=4) {
             out.push(dv.getInt32(i));
-            if (0 == (i & 0x0FFFFF)) {
+            if (0 === (i & 0x0FFFFF)) {
                 // fire a progress event every MiB
                 this._fireProgress(['prepare', i, bytes.byteLength]);
             }
@@ -109,7 +109,7 @@ sjcl.codec.bytes.prototype = {
                 out.push(tmp);
                 tmp = 0;
             }
-            if (0 == (i & 0x0FFFFF)) {
+            if (0 === (i & 0x0FFFFF)) {
                 // fire a progress event every MiB
                 this._fireProgress(['prepare', i, bytes.length]);
             }
