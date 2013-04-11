@@ -66,7 +66,7 @@ sjcl.hash.sha256.prototype = {
    */
   update: function (data) {
     if (typeof data === "string") {
-      data = this.utf8codec.toBits(data);
+      data = this._utf8codec.toBits(data);
     }
     var i, b = this._buffer = sjcl.bitArray.concat(this._buffer, data),
         ol = this._length,

@@ -41,7 +41,7 @@
  * look for improvements in future versions.
  * </p>
  */
-sjcl.prng = function() {
+sjcl.prng = function(paranoia) {
 
   /* private */
   this._pools                   = [new sjcl.hash.sha256()];
@@ -59,7 +59,7 @@ sjcl.prng = function() {
   this._key                     = [0,0,0,0,0,0,0,0];
   this._counter                 = [0,0,0,0];
   this._cipher                  = undefined;
-  this._defaultParanoia         = 6;
+  this._defaultParanoia         = paranoia || 6;
 
   /* event listener stuff */
   this._initilized              = false;
@@ -400,16 +400,16 @@ sjcl.prng.prototype = {
 
   _keyboardCollector: function (ev) {
     var chCode = ('charCode' in ev) ? ev.charCode : ev.keyCode;
-    sjcl.prng.addEntropy(chCode, 1, "keyboard");
+    sjcl.random.addEntropy(chCode, 1, "keyboard");
   },  
 
   _mouseCollector: function (ev) {
     var x = ev.x || ev.clientX || ev.offsetX || 0, y = ev.y || ev.clientY || ev.offsetY || 0;
-    sjcl.prng.addEntropy([x,y], 2, "mouse");
+    sjcl.random.addEntropy([x,y], 2, "mouse");
   },
 
   _accelerometerCollector: function (ev) {
-    sjcl.prng.addEntropy([
+    sjcl.random.addEntropy([
         ev.accelerationIncludingGravity.x||'',
         ev.accelerationIncludingGravity.y||'',
         ev.accelerationIncludingGravity.z||'',
@@ -418,7 +418,7 @@ sjcl.prng.prototype = {
   },
 
   _fireEvent: function (name, arg) {
-    var j, cbs=sjcl.prng._callbacks[name], cbsTemp=[];
+    var j, cbs = sjcl.random._callbacks[name], cbsTemp=[];
     /* TODO: there is a race condition between removing collectors and firing them */ 
 
     /* I'm not sure if this is necessary; in C++, iterating over a
@@ -438,18 +438,18 @@ sjcl.prng.prototype = {
 
   _savePoolState: function (ev) {
     if(window.localStorage){
-      window.localStorage.setItem("sjcl.prng",sjcl.prng._gen4words());
+      window.localStorage.setItem("sjcl.prng", sjcl.random.randomWords(4));
     }
   },
 
   _loadPoolState: function () {
     var r;
     if(window.localStorage){
-      r= window.localStorage.getItem("sjcl.prng");
+      r = window.localStorage.getItem("sjcl.prng");
       if(r){
         /* Assume the worst, that localStorage was compromised with
          * XSS and therefore contributes a worst case of 0 entropy*/
-        sjcl.prng.addEntropy(r, 0, "loadpool");
+        sjcl.random.addEntropy(r, 0, "loadpool");
       }
     }
   },
@@ -471,7 +471,4 @@ sjcl.prng.prototype = {
   }
 };
 
-(function(){
-  /* Make sure the sjcl.prng is ready to use*/
-  sjcl.prng.init();
-})();
+sjcl.random = new sjcl.prng(6);

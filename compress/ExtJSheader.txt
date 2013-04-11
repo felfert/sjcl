@@ -1,1 +1,1 @@
-Ext.define('Ext.ux.Sjcl',{});
+Ext.define('ThirdParty.Sjcl',{});
