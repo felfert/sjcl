@@ -17,9 +17,39 @@ if (sjcl.beware === undefined) {
 }
 sjcl.beware["CBC mode is dangerous because it doesn't protect message integrity."
 ] = function() {
-  sjcl.mode.cbc = new Class({
+  sjcl.mode.cbc = function() {
+    var me = this;
+    me._listeners = [];
+  };
 
-    Implements: Events,
+  sjcl.mode.cbc.prototype = {
+
+    /* private */
+    _fireProgress: function(args) {
+        var j;
+        for (j = 0; j < this._listeners.length; ++j) {
+            this._listeners[j].fn.apply(this._listeners[j].scope, args);
+        }
+    },
+    /** add an event listener */
+    addEventListener: function (name, callback, scope) {
+        if (name === 'progress') {
+            scope = scope || this;
+            this._listeners.push({fn:callback,scope:scope});
+        }
+    },
+    /** remove an event listener */
+    removeEventListener: function (name, callback, scope) {
+        var j;
+        if (name === 'progress') {
+            scope = scope || this;
+            for (j = 0; j < this._listeners.length; ++j) {
+                if ((this._listeners[j].fn === callback) && (this._listeners[j].scope === scope)) {
+                    this._listeners.splice(j, 1);
+                }
+            }
+        }
+    },
 
     /** The name of the mode.
      * @constant
@@ -58,7 +88,7 @@ sjcl.beware["CBC mode is dangerous because it doesn't protect message integrity.
         output.splice(i,0,iv[0],iv[1],iv[2],iv[3]);
         if (0 == (i & 0x0FFFFF)) {
           // fire a progress event every MiB
-          this.fireEvent('progress', ['encrypt', i, bl]);
+          this._fireProgress(['encrypt', i, bl]);
         }
       }
       
@@ -105,7 +135,7 @@ sjcl.beware["CBC mode is dangerous because it doesn't protect message integrity.
         iv = bi;
         if (0 == (i & 0x0FFFFF)) {
           // fire a progress event every MiB
-          this.fireEvent('progress', ['decrypt', i, ciphertext.length]);
+          this._fireProgress(['decrypt', i, ciphertext.length]);
         }
       }
 
@@ -122,5 +152,5 @@ sjcl.beware["CBC mode is dangerous because it doesn't protect message integrity.
 
       return w.bitSlice(output, 0, output.length*32 - bi*8);
     }
-  });
+  };
 };
