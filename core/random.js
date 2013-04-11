@@ -464,7 +464,7 @@ sjcl.prng.prototype = {
 		  ret = Math.random()*0x100000000|0;
 	  }
 	  return ret;
-  },
+  }
 };
 
 (function(){
