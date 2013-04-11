@@ -13,9 +13,39 @@
  * @author Mike Hamburg
  * @author Dan Boneh
  */
-sjcl.mode.ocb2 = new Class({
+sjcl.mode.ocb2 = function() {
+  var me = this;
+  me._listeners = [];
+};
 
-  Implements: Events,
+sjcl.mode.ocb2.prototype = {
+
+  /* private */
+  _fireProgress: function(args) {
+    var j;
+    for (j = 0; j < this._listeners.length; ++j) {
+      this._listeners[j].fn.apply(this._listeners[j].scope, args);
+    }
+  },
+  /** add an event listener */
+  addEventListener: function (name, callback, scope) {
+    if (name === 'progress') {
+      scope = scope || this;
+      this._listeners.push({fn:callback,scope:scope});
+    }
+  },
+  /** remove an event listener */
+  removeEventListener: function (name, callback, scope) {
+    var j;
+    if (name === 'progress') {
+      scope = scope || this;
+      for (j = 0; j < this._listeners.length; ++j) {
+        if ((this._listeners[j].fn === callback) && (this._listeners[j].scope === scope)) {
+          this._listeners.splice(j, 1);
+        }
+      }
+    }
+  },
 
   /** The name of the mode.
    * @constant
@@ -57,7 +87,7 @@ sjcl.mode.ocb2 = new Class({
       delta = times2(delta);
       if (0 == (i & 0x0FFFFF)) {
           // fire a progress event every MiB
-          this.fireEvent('progress', ['encrypt', i, plaintext.length]);
+          this._fireProgress(['encrypt', i, plaintext.length]);
       }
     }
     
@@ -117,7 +147,7 @@ sjcl.mode.ocb2 = new Class({
       delta = times2(delta);
       if (0 == (i & 0x0FFFFF)) {
           // fire a progress event every MiB
-          this.fireEvent('progress', ['decrypt', i, lenmax]);
+          this._fireProgress(['decrypt', i, lenmax]);
       }
     }
     
@@ -180,4 +210,4 @@ sjcl.mode.ocb2 = new Class({
             x[2]<<1 ^ x[3]>>>31,
             x[3]<<1 ^ (x[0]>>>31)*0x87];
   }
-});
+};
