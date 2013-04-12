@@ -65,6 +65,8 @@ sjcl.prng = function(paranoia) {
   this._collectorsStarted       = false;
   this._callbacks               = {progress: {}, seeded: {}};
   this._callbackI               = 0;
+  /* html5 worker environment */
+  this._isWorker                = (typeof self.WorkerLocation !== 'undefined');
 
   /* constants */
   this._NOT_READY               = 0;
@@ -76,14 +78,29 @@ sjcl.prng = function(paranoia) {
   this._MILLISECONDS_PER_RESEED = 30000;
   this._BITS_PER_RESEED         = 80;
 
-  this.init();
+  if (this._isWorker) {
+    // In a worker we must wait until the GUI thread is prep'd and sends
+    // us the persistent pool data
+    self.addEventListener('message', this.initHandler.bind(this));
+    // Tell the GUI thread, that we are ready to receive
+    self.postPessage({'state':'prnginit'});
+  } else {
+    this.init();
+  }
 };
 
 sjcl.prng.prototype = {
+
+  initHandler: function(evt) {
+    if (evt.data && evt.data.hasOwnProperty('init') && evt.data.hasOwnProperty('pool')) {
+      this.init(evt.data.pool);
+    }
+  },
+
   /** Prepare the entorpy pools for use.
   */
-  init: function () {
-    var r, x;
+  init: function(poolData) {
+    var r, x, handler;
     /* sjcl.prng is useless without the following line,  
      * this should be started as soon as possilbe to collect the most
      * entorpy*/
@@ -96,20 +113,10 @@ sjcl.prng.prototype = {
       this.addEntropy(r, 1, "init");
     }
 
-    /*We should be over https and these would be valid secrets.
-     * Worst case adding more data doesn't hurt*/
-    this.addEntropy(document.cookie, 0, "cookie");
-    this.addEntropy(document.location.href, 0, "location");
-
-    /*If sjcl.prng has run before then we should have a preivous 
+    /*If sjcl.prng has run before then we should have a previous 
      * state to draw from*/
-    this._loadPoolState();
-    if (window.addEventListener) {
-      window.addEventListener("beforeunload", this._savePoolState.bind(this), false);
-    } else if (document.attachEvent) {
-      document.attachEvent("onbeforeunload", this._savePoolState.bind(this));
-    } else if (self.postMessage) {
-      var handler = function(evt) {
+    if (this._isWorker) {
+      handler = function(evt) {
         var data = evt.data;
         if (data.type === undefined) {
           return; // Not for us
@@ -117,14 +124,23 @@ sjcl.prng.prototype = {
         if (data.type === 'event' && data.what === 'beforeunload') {
           this._savePoolState();
         }
-        if (data.type === 'pool' && data.what === 'restore') {
-          /* Assume the worst, that localStorage was compromised with
-           * XSS and therefore contributes a worst case of 0 entropy*/
-          this.addEntropy(data.data, 0, "loadpool");
-        }
-      });
+      };
+      this.addEntropy(self.location.href, 0, "location");
+      this._loadPoolState(poolData);
       self.addEventListener('message', handler.bind(this));
-      self.postMessage({'listen', events:['beforeunload']});
+      self.postMessage({'state':'listen', 'events':'beforeunload'});
+    } else {
+      /*We should be over https and these would be valid secrets.
+       * Worst case adding more data doesn't hurt*/
+      this.addEntropy(document.cookie, 0, "cookie");
+      this.addEntropy(document.location.href, 0, "location");
+
+      this._loadPoolState();
+      if (window.addEventListener) {
+        window.addEventListener("beforeunload", this._savePoolState.bind(this), false);
+      } else if (document.attachEvent) {
+        document.attachEvent("onbeforeunload", this._savePoolState.bind(this));
+      }
     }
   },
 
@@ -284,31 +300,9 @@ sjcl.prng.prototype = {
 
   /** start the built-in entropy collectors */
   startCollectors: function () {
-    var ok = false;
     if (this._collectorsStarted) { return; }
 
-    if (window && document) {
-      // Executed in a "regular" browser engine.
-
-      /* Since bind creates a *new* function, we must save that in order to
-       * be able to unbind it.
-       */
-      this._mouseCollectorBound = this._mouseCollector.bind(this);
-      this._keyboardCollectorBound = this._keyboardCollector.bind(this);
-      this._accelerometerCollectorBound = this._accelerometerCollector.bind(this);
-      if (window.addEventListener) {
-        window.addEventListener("mousemove", this._mouseCollectorBound, false);
-        window.addEventListener("keypress", this._keyboardCollectorBound, false);
-        window.addEventListener("devicemotion", this._accelerometerCollectorBound, false);
-        ok = true;
-      } else if (document.attachEvent) {
-        document.attachEvent("onmousemove", this._mouseCollectorBound);
-        document.attachEvent("onkeypress", this._keyboardCollectorBound);
-        document.attachEvent("ondevicemotion", this._accelerometerCollectorBound);
-        ok = true;
-      }
-    }
-    if (!ok && self.postMessage) {
+    if (this.isWorker) {
       // Executed inside a html5 web worker: communicate with the
       // main GUI thread via messages.
       var handler = function(evt) {
@@ -342,14 +336,31 @@ sjcl.prng.prototype = {
           }
         }
       };
-      self.addEventListener('message', handler.bind(this));
+      this._collHandler = handler.bind(this);
+      self.addEventListener('message', this._collHandler);
       // Tell the main GUI thread the events it should forward to us via messages
-      self.postMessage({'listen', events:['mousemove','keypress','devicemotion']});
-    }
-    if (!ok) {
-      throw new sjcl.exception.bug("can't attach event");
-    }
+      self.postMessage({'state':'listen', 'events':['mousemove','keypress','devicemotion']});
+    } else {
+      // Executed in a "regular" browser engine.
 
+      /* Since bind creates a *new* function, we must save that in order to
+       * be able to unbind it.
+       */
+      this._mouseCollectorBound = this._mouseCollector.bind(this);
+      this._keyboardCollectorBound = this._keyboardCollector.bind(this);
+      this._accelerometerCollectorBound = this._accelerometerCollector.bind(this);
+      if (window.addEventListener) {
+        window.addEventListener("mousemove", this._mouseCollectorBound, false);
+        window.addEventListener("keypress", this._keyboardCollectorBound, false);
+        window.addEventListener("devicemotion", this._accelerometerCollectorBound, false);
+      } else if (document.attachEvent) {
+        document.attachEvent("onmousemove", this._mouseCollectorBound);
+        document.attachEvent("onkeypress", this._keyboardCollectorBound);
+        document.attachEvent("ondevicemotion", this._accelerometerCollectorBound);
+      } else {
+        throw new sjcl.exception.bug("can't attach event");
+      }
+    }
     this._collectorsStarted = true;
   },
 
@@ -357,14 +368,19 @@ sjcl.prng.prototype = {
   stopCollectors: function () {
     if (!this._collectorsStarted) { return; }
 
-    if (window.removeEventListener) {
-      window.removeEventListener("mousemove", this._mouseCollectorBound, false);
-      window.removeEventListener("keypress", this._keyboardCollectorBound, false);
-      window.removeEventListener("devicemotion", this._accelerometerCollectorBound, false);      
-    } else if (window.detachEvent) {
-      window.detachEvent("onmousemove", this._mouseCollectorBound);
-      window.detachEvent("onkeypress", this._keyboardCollectorBound);
-      window.detachEvent("ondevicemotion", this._accelerometerCollectorBound);      
+    if (this.isWorker) {
+      self.removeEventListener('message', this._collHandler);
+      self.postMessage({'state':'unlisten', 'events':['mousemove','keypress','devicemotion']});
+    } else {
+      if (window.removeEventListener) {
+        window.removeEventListener("mousemove", this._mouseCollectorBound, false);
+        window.removeEventListener("keypress", this._keyboardCollectorBound, false);
+        window.removeEventListener("devicemotion", this._accelerometerCollectorBound, false);      
+      } else if (window.detachEvent) {
+        window.detachEvent("onmousemove", this._mouseCollectorBound);
+        window.detachEvent("onkeypress", this._keyboardCollectorBound);
+        window.detachEvent("ondevicemotion", this._accelerometerCollectorBound);      
+      }
     }
     this._collectorsStarted = false;
   },
@@ -505,24 +521,23 @@ sjcl.prng.prototype = {
     }
   },
 
-  _savePoolState: function (ev) {
+  _savePoolState: function () {
     var saveData = this.randomWords(4);
-    if(window && window.localStorage){
+    if (this.isWorker) {
+      self.postMessage({'state':'savepool','data':saveData});
+    } else if (window.localStorage){
       window.localStorage.setItem("sjcl.prng", saveData);
-    } else if (self.postMessage) {
-      self.postMessage({'savepool':saveData});
     }
   },
 
-  _loadPoolState: function () {
-    var r;
-    if(window && window.localStorage){
-      r = window.localStorage.getItem("sjcl.prng");
-      if(r){
-        /* Assume the worst, that localStorage was compromised with
-         * XSS and therefore contributes a worst case of 0 entropy*/
-        this.addEntropy(r, 0, "loadpool");
-      }
+  _loadPoolState: function (poolData) {
+    if((!this._isWorker) && window.localStorage){
+      poolData = window.localStorage.getItem("sjcl.prng");
+    }
+    if(poolData){
+      /* Assume the worst, that localStorage was compromised with
+       * XSS and therefore contributes a worst case of 0 entropy*/
+      this.addEntropy(poolData, 0, "loadpool");
     }
   },
 
@@ -530,7 +545,12 @@ sjcl.prng.prototype = {
   */
   _platformPRNG: function () {
     var ret, ab;
-    if (window && typeof window.crypto.getRandomValues === 'function'){
+    // Unfortunately, in a worker there's currently no access to builtin
+    // crypto. In fact, it would be much easier to access /dev/random from
+    // a worker. It's discussed at W3C but until then ...
+    // See: http://lists.w3.org/Archives/Public/public-webcrypto/2012Oct/0076.html
+    //
+    if ((!this._isWorker) && typeof window.crypto.getRandomValues === 'function'){
       ab = new Uint32Array(1);
       window.crypto.getRandomValues(ab);
       ret = ab[0];
