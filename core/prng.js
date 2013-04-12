@@ -304,7 +304,7 @@ sjcl.prng.prototype = {
   startCollectors: function () {
     if (this._collectorsStarted) { return; }
 
-    if (this.isWorker) {
+    if (this._isWorker) {
       // Executed inside a html5 web worker: communicate with the
       // main GUI thread via messages.
       var handler = function(evt) {
@@ -370,7 +370,7 @@ sjcl.prng.prototype = {
   stopCollectors: function () {
     if (!this._collectorsStarted) { return; }
 
-    if (this.isWorker) {
+    if (this._isWorker) {
       self.removeEventListener('message', this._collHandler);
       self.postMessage({'state':'unlisten', 'events':['mousemove','keypress','devicemotion']});
     } else {
@@ -525,7 +525,7 @@ sjcl.prng.prototype = {
 
   _savePoolState: function () {
     var saveData = this.randomWords(4);
-    if (this.isWorker) {
+    if (this._isWorker) {
       self.postMessage({'state':'savepool','data':saveData});
     } else if (window.localStorage){
       window.localStorage.setItem("sjcl.prng", saveData);
