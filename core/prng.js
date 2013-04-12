@@ -83,7 +83,7 @@ sjcl.prng = function(paranoia) {
     // us the persistent pool data
     self.addEventListener('message', this.initHandler.bind(this));
     // Tell the GUI thread, that we are ready to receive
-    self.postPessage({'state':'prnginit'});
+    self.postMessage({'state':'prnginit'});
   } else {
     this.init();
   }
