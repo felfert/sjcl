@@ -108,7 +108,24 @@ sjcl.prng.prototype = {
       window.addEventListener("beforeunload", this._savePoolState.bind(this), false);
     } else if (document.attachEvent) {
       document.attachEvent("onbeforeunload", this._savePoolState.bind(this));
-    }	
+    } else if (self.postMessage) {
+      var handler = function(evt) {
+        var data = evt.data;
+        if (data.type === undefined) {
+          return; // Not for us
+        }
+        if (data.type === 'event' && data.what === 'beforeunload') {
+          this._savePoolState();
+        }
+        if (data.type === 'pool' && data.what === 'restore') {
+          /* Assume the worst, that localStorage was compromised with
+           * XSS and therefore contributes a worst case of 0 entropy*/
+          this.addEntropy(data.data, 0, "loadpool");
+        }
+      });
+      self.addEventListener('message', handler.bind(this));
+      self.postMessage({'listen', events:['beforeunload']});
+    }
   },
 
   /** Generate several random words, and return them in an array
@@ -267,24 +284,69 @@ sjcl.prng.prototype = {
 
   /** start the built-in entropy collectors */
   startCollectors: function () {
+    var ok = false;
     if (this._collectorsStarted) { return; }
 
-    /* Since bind creates a *new* function, we must save that in order to
-     * be able to unbind it.
-     */
-    this._mouseCollectorBound = this._mouseCollector.bind(this);
-    this._keyboardCollectorBound = this._keyboardCollector.bind(this);
-    this._accelerometerCollectorBound = this._accelerometerCollector.bind(this);
-    if (window.addEventListener) {
-      window.addEventListener("mousemove", this._mouseCollectorBound, false);
-      window.addEventListener("keypress", this._keyboardCollectorBound, false);
-      window.addEventListener("devicemotion", this._accelerometerCollectorBound, false);
-    } else if (document.attachEvent) {
-      document.attachEvent("onmousemove", this._mouseCollectorBound);
-      document.attachEvent("onkeypress", this._keyboardCollectorBound);
-      document.attachEvent("ondevicemotion", this._accelerometerCollectorBound);
+    if (window && document) {
+      // Executed in a "regular" browser engine.
+
+      /* Since bind creates a *new* function, we must save that in order to
+       * be able to unbind it.
+       */
+      this._mouseCollectorBound = this._mouseCollector.bind(this);
+      this._keyboardCollectorBound = this._keyboardCollector.bind(this);
+      this._accelerometerCollectorBound = this._accelerometerCollector.bind(this);
+      if (window.addEventListener) {
+        window.addEventListener("mousemove", this._mouseCollectorBound, false);
+        window.addEventListener("keypress", this._keyboardCollectorBound, false);
+        window.addEventListener("devicemotion", this._accelerometerCollectorBound, false);
+        ok = true;
+      } else if (document.attachEvent) {
+        document.attachEvent("onmousemove", this._mouseCollectorBound);
+        document.attachEvent("onkeypress", this._keyboardCollectorBound);
+        document.attachEvent("ondevicemotion", this._accelerometerCollectorBound);
+        ok = true;
+      }
     }
-    else {
+    if (!ok && self.postMessage) {
+      // Executed inside a html5 web worker: communicate with the
+      // main GUI thread via messages.
+      var handler = function(evt) {
+        var data = evt.data;
+        if (data.type === undefined) {
+          return; // Not for us
+        }
+        if (data.type === 'event') {
+          switch (data.what) {
+            case 'mousemove':
+              this._mouseCollector({
+                'x':data.x,
+                'y':data.y
+              });
+              break;
+            case 'keypress':
+              this._keyboardCollector({
+                'charCode':data.cc,
+                'keyCode':data.kc
+              });
+              break;
+            case 'devicemotion':
+              this._accelerometerCollector({
+                'accelerationIncludingGravity':{
+                  'x': data.x,
+                  'y': data.y,
+                  'z': data.z
+                }
+              });
+              break;
+          }
+        }
+      };
+      self.addEventListener('message', handler.bind(this));
+      // Tell the main GUI thread the events it should forward to us via messages
+      self.postMessage({'listen', events:['mousemove','keypress','devicemotion']});
+    }
+    if (!ok) {
       throw new sjcl.exception.bug("can't attach event");
     }
 
@@ -420,7 +482,7 @@ sjcl.prng.prototype = {
         ev.accelerationIncludingGravity.x||'',
         ev.accelerationIncludingGravity.y||'',
         ev.accelerationIncludingGravity.z||'',
-        window.orientation||''
+        (window && window.orientation)||''
         ], 3, "accelerometer");
   },
 
@@ -444,14 +506,17 @@ sjcl.prng.prototype = {
   },
 
   _savePoolState: function (ev) {
-    if(window.localStorage){
-      window.localStorage.setItem("sjcl.prng", this.randomWords(4));
+    var saveData = this.randomWords(4);
+    if(window && window.localStorage){
+      window.localStorage.setItem("sjcl.prng", saveData);
+    } else if (self.postMessage) {
+      self.postMessage({'savepool':saveData});
     }
   },
 
   _loadPoolState: function () {
     var r;
-    if(window.localStorage){
+    if(window && window.localStorage){
       r = window.localStorage.getItem("sjcl.prng");
       if(r){
         /* Assume the worst, that localStorage was compromised with
@@ -465,7 +530,7 @@ sjcl.prng.prototype = {
   */
   _platformPRNG: function () {
     var ret, ab;
-    if(typeof window.crypto.getRandomValues === 'function'){
+    if (window && typeof window.crypto.getRandomValues === 'function'){
       ab = new Uint32Array(1);
       window.crypto.getRandomValues(ab);
       ret = ab[0];
