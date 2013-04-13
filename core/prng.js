@@ -59,7 +59,7 @@ sjcl.prng = function(paranoia) {
   this._key                     = [0,0,0,0,0,0,0,0];
   this._counter                 = [0,0,0,0];
   this._cipher                  = undefined;
-  this._defaultParanoia         = paranoia || 6;
+  this._defaultParanoia         = paranoia || 8;
 
   /* event listener stuff */
   this._collectorsStarted       = false;
@@ -565,4 +565,4 @@ sjcl.prng.prototype = {
   }
 };
 
-sjcl.random = new sjcl.prng(6);
+sjcl.random = new sjcl.prng(8);
