@@ -24,7 +24,7 @@
     params = params || {};
     rp = rp || {};
     
-    var j = sjcl.json, p = j._add({ iv: sjcl.random.randomWords(4,0) },
+    var j = sjcl.json, p = j._add({ iv: sjcl.random.randomWords(4) },
                                   j.defaults), tmp, prp, adata;
     j._add(p, params);
     adata = p.adata;
@@ -276,7 +276,7 @@ sjcl.misc.cachedPbkdf2 = function (password, obj) {
   /* open the cache for this password and iteration count */
   cp = cache[password] = cache[password] || {};
   c = cp[iter] = cp[iter] || { firstSalt: (obj.salt && obj.salt.length) ?
-                     obj.salt.slice(0) : sjcl.random.randomWords(2,0) };
+                     obj.salt.slice(0) : sjcl.random.randomWords(2) };
           
   salt = (obj.salt === undefined) ? c.firstSalt : obj.salt;
   
