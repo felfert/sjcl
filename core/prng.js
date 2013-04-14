@@ -524,11 +524,12 @@ sjcl.prng.prototype = {
   },
 
   _savePoolState: function () {
-    var saveData = this.randomWords(4);
-    if (this._isWorker) {
-      self.postMessage({'state':'savepool','data':saveData});
-    } else if (window.localStorage){
-      window.localStorage.setItem("sjcl.prng", saveData);
+    if (typeof this._cipher !== 'undefined') {
+      if (this._isWorker) {
+        self.postMessage({'state':'savepool','data':this._gen4words()});
+      } else if (window.localStorage){
+        window.localStorage.setItem("sjcl.prng", this._gen4words());
+      }
     }
   },
 
@@ -552,7 +553,7 @@ sjcl.prng.prototype = {
     // a worker. It's discussed at W3C but until then ...
     // See: http://lists.w3.org/Archives/Public/public-webcrypto/2012Oct/0076.html
     //
-    if ((!this._isWorker) && typeof window.crypto.getRandomValues === 'function'){
+    if ((!this._isWorker) && typeof window.crypto.getRandomValues === 'function' && typeof window.Uint32Array === 'function'){
       ab = new Uint32Array(1);
       window.crypto.getRandomValues(ab);
       ret = ab[0];
