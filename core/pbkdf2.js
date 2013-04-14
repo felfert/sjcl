@@ -52,3 +52,5 @@ sjcl.misc.pbkdf2 = function (password, salt, count, length, Prff) {
 
   return out;
 };
+
+/* vi:set expandtab shiftwidth=2 tabstop=2: */

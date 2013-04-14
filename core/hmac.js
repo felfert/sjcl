@@ -37,3 +37,5 @@ sjcl.misc.hmac.prototype.encrypt = sjcl.misc.hmac.prototype.mac = function (data
   return new (this._hash)(this._baseHash[1]).update(w).finalize();
 };
 
+
+/* vi:set expandtab shiftwidth=2 tabstop=2: */

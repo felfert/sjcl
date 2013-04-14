@@ -163,3 +163,5 @@ sjcl.hash.sha1.prototype = {
    h[4] = (h[4]+e) |0;
   }
 };
+
+/* vi:set expandtab shiftwidth=2 tabstop=2: */

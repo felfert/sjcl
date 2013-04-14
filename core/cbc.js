@@ -154,3 +154,5 @@ sjcl.beware["CBC mode is dangerous because it doesn't protect message integrity.
     }
   };
 };
+
+/* vi:set expandtab shiftwidth=2 tabstop=2: */

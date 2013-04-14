@@ -567,3 +567,5 @@ sjcl.prng.prototype = {
 };
 
 sjcl.random = new sjcl.prng(8);
+
+/* vi:set expandtab shiftwidth=2 tabstop=2: */

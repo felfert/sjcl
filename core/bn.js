@@ -550,3 +550,5 @@ sjcl.bn.random = function(modulus, paranoia) {
   }
 };
 
+
+/* vi:set expandtab shiftwidth=2 tabstop=2: */

@@ -181,3 +181,5 @@ sjcl.mode.gcm = {
     return { tag:w.bitSlice(tag, 0, tlen), data:data };
   }
 };
+
+/* vi:set expandtab shiftwidth=2 tabstop=2: */

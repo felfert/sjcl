@@ -28,3 +28,5 @@ sjcl.codec.hex = {
   }
 };
 
+
+/* vi:set expandtab shiftwidth=2 tabstop=2: */

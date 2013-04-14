@@ -221,3 +221,5 @@ sjcl.mode.ccm.prototype = {
     return { tag:tag, data:w.clamp(data,bl) };
   }
 };
+
+/* vi:set expandtab shiftwidth=2 tabstop=2: */

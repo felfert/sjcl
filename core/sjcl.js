@@ -71,3 +71,5 @@ var sjcl = {
 if(typeof module !== 'undefined' && module.exports){
   module.exports = sjcl;
 }
+
+/* vi:set expandtab shiftwidth=2 tabstop=2: */

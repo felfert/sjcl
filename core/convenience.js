@@ -285,3 +285,5 @@ sjcl.misc.cachedPbkdf2 = function (password, obj) {
 };
 
 
+
+/* vi:set expandtab shiftwidth=2 tabstop=2: */

@@ -65,3 +65,5 @@ sjcl.codec.base64url = {
   fromBits: function (arr) { return sjcl.codec.base64.fromBits(arr,1,1); },
   toBits: function (str) { return sjcl.codec.base64.toBits(str,1); }
 };
+
+/* vi:set expandtab shiftwidth=2 tabstop=2: */

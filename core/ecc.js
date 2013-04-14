@@ -410,3 +410,5 @@ sjcl.ecc.ecdsa.publicKey.prototype = {
     return true;
   }
 };
+
+/* vi:set expandtab shiftwidth=2 tabstop=2: */

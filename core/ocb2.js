@@ -211,3 +211,5 @@ sjcl.mode.ocb2.prototype = {
             x[3]<<1 ^ (x[0]>>>31)*0x87];
   }
 };
+
+/* vi:set expandtab shiftwidth=2 tabstop=2: */

@@ -365,3 +365,5 @@ sjcl.hash.sha512.prototype = {
 };
 
 
+
+/* vi:set expandtab shiftwidth=2 tabstop=2: */
