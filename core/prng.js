@@ -92,7 +92,7 @@ sjcl.prng = function(paranoia) {
 sjcl.prng.prototype = {
 
   initHandler: function(evt) {
-    if (evt.data && evt.data.cmd && evt.data.pool) {
+    if (evt.data && evt.data.cmd) {
       if (evt.data.cmd === 'prnginit') {
         this.init(evt.data.pool);
       }
